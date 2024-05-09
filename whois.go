@@ -210,7 +210,6 @@
 //     // Handle error
 // }
 
-
 func (c *Client) Whois(domain string, proxyURL string, servers ...string) (result string, err error) {
     start := time.Now()
     defer func() {
@@ -276,7 +275,6 @@ func (c *Client) Whois(domain string, proxyURL string, servers ...string) (resul
     return
 }
 
-
 func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error) {
     c.elapsed = 0
     start := time.Now()
@@ -301,17 +299,26 @@ func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error)
 
     var conn net.Conn
     if proxyURL != "" {
-        dialer, err := proxy.SOCKS5("tcp", proxyURL, nil, &net.Dialer{
-            Timeout: c.timeout,
-        })
+        proxyURL, err := url.Parse(proxyURL)
         if err != nil {
-            return "", fmt.Errorf("whois: failed to create SOCKS5 proxy dialer: %w", err)
+            return "", fmt.Errorf("whois: failed to parse proxy URL: %w", err)
+        }
+        dialer := &net.Dialer{
+            Timeout: c.timeout,
         }
         conn, err = dialer.Dial("tcp", net.JoinHostPort(server, port))
+        if err != nil {
+            return "", fmt.Errorf("whois: connect to whois server failed: %w", err)
+        }
+        conn = &httpproxy.ConnectProxy{
+            Conn:   conn,
+            Proxy:  proxyURL,
+            Target: net.JoinHostPort(server, port),
+        }
     } else {
-    }
-    if err != nil {
-        return "", fmt.Errorf("whois: connect to whois server failed: %w", err)
+        if err != nil {
+            return "", fmt.Errorf("whois: connect to whois server failed: %w", err)
+        }
     }
     defer conn.Close()
     c.elapsed = time.Since(start)
@@ -334,6 +341,12 @@ func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error)
 
     return string(buffer), nil
 }
+
+
+//result, err := c.Whois("example.com", "http://user:password@proxy.example.com:8080")
+//if err != nil {
+//    // Handle error
+//}
 
  
  // getExtension returns extension of domain
