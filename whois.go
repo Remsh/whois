@@ -50,8 +50,8 @@
  }
  
  // Whois do the whois query and returns whois information
- func Whois(domain string, servers ...string) (result string, err error) {
-	 return DefaultClient.Whois(domain, servers...)
+ func Whois(domain string, proxyURL string, servers ...string) (result string, err error) {
+	 return DefaultClient.Whois(domain, proxyURL, servers...)
  }
  
  // NewClient returns new whois client
