@@ -9,6 +9,8 @@
 	 "time"
  
 	 "golang.org/x/net/proxy"
+	 "github.com/go-httpproxy/httpproxy"
+	 "net/url"
  )
  
  const (
@@ -87,128 +89,7 @@
 	 c.disableReferral = disabled
 	 return c
  }
- 
-//  // Whois do the whois query and returns whois information
-//  func (c *Client) Whois(domain string, servers ...string) (result string, err error) {
-// 	 start := time.Now()
-// 	 defer func() {
-// 		 result = strings.TrimSpace(result)
-// 		 if result != "" && !c.disableStats {
-// 			 result = fmt.Sprintf("%s\n\n%% Query time: %d msec\n%% WHEN: %s\n",
-// 				 result, time.Since(start).Milliseconds(), start.Format("Mon Jan 02 15:04:05 MST 2006"),
-// 			 )
-// 		 }
-// 	 }()
- 
-// 	 domain = strings.Trim(strings.TrimSpace(domain), ".")
-// 	 if domain == "" {
-// 		 return "", ErrDomainEmpty
-// 	 }
- 
-// 	 isASN := IsASN(domain)
-// 	 if isASN {
-// 		 if !strings.HasPrefix(strings.ToUpper(domain), asnPrefix) {
-// 			 domain = asnPrefix + domain
-// 		 }
-// 	 }
- 
-// 	 if !strings.Contains(domain, ".") && !strings.Contains(domain, ":") && !isASN {
-// 		 return c.rawQuery(domain, defaultWhoisServer, defaultWhoisPort)
-// 	 }
- 
-// 	 var server, port string
-// 	 if len(servers) > 0 && servers[0] != "" {
-// 		 server = strings.ToLower(servers[0])
-// 		 port = defaultWhoisPort
-// 	 } else {
-// 		 ext := getExtension(domain)
-// 		 result, err := c.rawQuery(ext, defaultWhoisServer, defaultWhoisPort)
-// 		 if err != nil {
-// 			 return "", fmt.Errorf("whois: query for whois server failed: %w", err)
-// 		 }
-// 		 server, port = getServer(result)
-// 		 if server == "" {
-// 			 return "", fmt.Errorf("%w: %s", ErrWhoisServerNotFound, domain)
-// 		 }
-// 	 }
- 
-// 	 result, err = c.rawQuery(domain, server, port)
-// 	 if err != nil {
-// 		 return
-// 	 }
- 
-// 	 if c.disableReferral {
-// 		 return
-// 	 }
- 
-// 	 refServer, refPort := getServer(result)
-// 	 if refServer == "" || refServer == server {
-// 		 return
-// 	 }
- 
-// 	 data, err := c.rawQuery(domain, refServer, refPort)
-// 	 if err == nil {
-// 		 result += data
-// 	 }
- 
-// 	 return
-//  }
- 
-//  // rawQuery do raw query to the server
-//  func (c *Client) rawQuery(domain, server, port string) (string, error) {
-// 	 c.elapsed = 0
-// 	 start := time.Now()
- 
-// 	 if server == "whois.arin.net" {
-// 		 if IsASN(domain) {
-// 			 domain = "a + " + domain
-// 		 } else {
-// 			 domain = "n + " + domain
-// 		 }
-// 	 }
- 
-// 	 // See: https://github.com/likexian/whois/issues/17
-// 	 if server == "whois.godaddy" {
-// 		 server = "whois.godaddy.com"
-// 	 }
- 
-// 	 // See: https://github.com/likexian/whois/pull/30
-// 	 if server == "porkbun.com/whois" {
-// 		 server = "whois.porkbun.com"
-// 	 }
- 
-// 	 conn, err := c.dialer.Dial("tcp", net.JoinHostPort(server, port))
-// 	 if err != nil {
-// 		 return "", fmt.Errorf("whois: connect to whois server failed: %w", err)
-// 	 }
- 
-// 	 defer conn.Close()
-// 	 c.elapsed = time.Since(start)
- 
-// 	 _ = conn.SetWriteDeadline(time.Now().Add(c.timeout - c.elapsed))
-// 	 _, err = conn.Write([]byte(domain + "\r\n"))
-// 	 if err != nil {
-// 		 return "", fmt.Errorf("whois: send to whois server failed: %w", err)
-// 	 }
- 
-// 	 c.elapsed = time.Since(start)
- 
-// 	 _ = conn.SetReadDeadline(time.Now().Add(c.timeout - c.elapsed))
-// 	 buffer, err := io.ReadAll(conn)
-// 	 if err != nil {
-// 		 return "", fmt.Errorf("whois: read from whois server failed: %w", err)
-// 	 }
- 
-// 	 c.elapsed = time.Since(start)
- 
-// 	 return string(buffer), nil
-//  }
 
-
-// result, err := c.Whois("example.com", "socks5://user:password@proxy.example.com:1080")
-// if err != nil {
-//     // Handle error
-// }
 
 func (c *Client) Whois(domain string, proxyURL string, servers ...string) (result string, err error) {
     start := time.Now()
