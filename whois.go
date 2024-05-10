@@ -186,24 +186,6 @@ func (c *Client) Whois(domain string, proxyURL string, servers ...string) (resul
     return
 }
 
-// func getProxyDialer(proxyURL string) (proxy.Dialer, error) {
-//     if proxyURL == "" {
-//         return proxy.Direct, nil
-//     }
-
-//     proxyURL, err := url.Parse(proxyURL)
-//     if err != nil {
-//         return nil, fmt.Errorf("failed to parse proxy URL: %w", err)
-//     }
-
-//     proxyDialer, err := proxy.SOCKS5("tcp", proxyURL.Host, nil, proxy.Direct)
-//     if err != nil {
-//         return nil, fmt.Errorf("failed to create proxy dialer: %w", err)
-//     }
-
-//     return proxyDialer, nil
-// }
-
 
 func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error) {
     c.elapsed = 0
@@ -236,21 +218,7 @@ func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error)
     }
 
     if proxyURL != "" {
-        // proxyURL, err := url.Parse(proxyURL)
-        // if err != nil {
-        //     return "", fmt.Errorf("whois: failed to parse proxy URL: %w", err)
-        // }
 
-        // conn, err = dialer.Dial("tcp", net.JoinHostPort(server, port))
-        // if err != nil {
-        //     return "", fmt.Errorf("whois: connect to whois server failed: %w", err)
-        // }
-        // conn = &httpproxy.ConnectProxy{
-        //     Conn:   conn,
-        //     Proxy:  proxyURL,
-        //     Target: net.JoinHostPort(server, port),
-        // }
-        
         proxyURI, _ := url.Parse(proxyURL)
     
         switch proxyURI.Scheme {                                                       
@@ -269,11 +237,11 @@ func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error)
         conn = &deadlineConn{
             Conn:          conn,
             readDeadline:  time.Now().Add(c.timeout),
-            writeDeadline: time.Now().Add(c.timeout - c.elapsed),
+            writeDeadline: time.Now().Add(c.timeout),
         }
 
         defer func() {
-            if closeErr := conn.Close(); closeErr != nil {
+            if closeErr := conn.Conn.Close(); closeErr != nil {
                 log.Printf("Error closing connection: %v", closeErr)
             }
         }()
