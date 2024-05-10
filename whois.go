@@ -269,7 +269,7 @@ func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error)
         conn = &deadlineConn{
             Conn:          conn,
             readDeadline:  time.Now().Add(c.timeout),
-            writeDeadline: time.Now().Add(time.Now().Add(c.timeout - c.elapsed)),
+            writeDeadline: time.Now().Add(c.timeout - c.elapsed),
         }
 
         defer func() {
@@ -331,7 +331,7 @@ func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error)
         return string(buffer), nil
     }
 
-    return string(buffer), nil
+    return '', nil
 }
 
 //result, err := c.Whois("example.com", "http://user:password@proxy.example.com:8080")
