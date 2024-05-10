@@ -64,6 +64,15 @@ func (c *deadlineConn) Write(b []byte) (int, error) {
     return c.Conn.Write(b)
 }
 
+func (c *deadlineConn) Close() error {
+    // Perform any necessary cleanup operations
+    // Close the underlying connection
+    if c.Conn != nil {
+        return c.Conn.Close()
+    }
+    return nil
+}
+
 
  
  // Version returns package version
@@ -241,7 +250,7 @@ func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error)
         }
 
         defer func() {
-            if closeErr := conn.Conn.Close(); closeErr != nil {
+            if closeErr := conn.Close(); closeErr != nil {
                 log.Printf("Error closing connection: %v", closeErr)
             }
         }()
