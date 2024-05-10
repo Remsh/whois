@@ -331,7 +331,7 @@ func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error)
         return string(buffer), nil
     }
 
-    return '', nil
+    return "", nil
 }
 
 //result, err := c.Whois("example.com", "http://user:password@proxy.example.com:8080")
