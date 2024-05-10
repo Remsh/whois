@@ -38,6 +38,33 @@
 	 disableStats    bool
 	 disableReferral bool
  }
+
+
+type deadlineConn struct {
+    net.Conn
+    readDeadline  time.Time
+    writeDeadline time.Time
+}
+
+func (c *deadlineConn) Read(b []byte) (int, error) {
+    if !c.readDeadline.IsZero() {
+        if err := c.Conn.SetReadDeadline(c.readDeadline); err != nil {
+            return 0, err
+        }
+    }
+    return c.Conn.Read(b)
+}
+
+func (c *deadlineConn) Write(b []byte) (int, error) {
+    if !c.writeDeadline.IsZero() {
+        if err := c.Conn.SetWriteDeadline(c.writeDeadline); err != nil {
+            return 0, err
+        }
+    }
+    return c.Conn.Write(b)
+}
+
+
  
  // Version returns package version
  func Version() string {
@@ -236,45 +263,79 @@ func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error)
         }    
         conn, err = proxyDialer.Dial("tcp", net.JoinHostPort(server, port))
 
+
+        c.elapsed = time.Since(start)
+        // Wrap the connection with deadlineConn
+        conn = &deadlineConn{
+            Conn:          conn,
+            readDeadline:  time.Now().Add(c.timeout),
+            writeDeadline: time.Now().Add(time.Now().Add(c.timeout - c.elapsed)),
+        }
+
+        defer func() {
+            if closeErr := conn.Close(); closeErr != nil {
+                log.Printf("Error closing connection: %v", closeErr)
+            }
+        }()
+    
+        // c.elapsed = time.Since(start)
+    
+        // _ = conn.SetWriteDeadline(time.Now().Add(c.timeout - c.elapsed))
+        _, err = conn.Write([]byte(domain + "\r\n"))
+        if err != nil {
+            return "", fmt.Errorf("whois: send to whois server failed: %w", err)
+        }
+    
+        // c.elapsed = time.Since(start)
+    
+        // _ = conn.SetReadDeadline(time.Now().Add(c.timeout - c.elapsed))
+        buffer, err := io.ReadAll(conn)
+        if err != nil {
+            return "", fmt.Errorf("whois: read from whois server failed: %w", err)
+        }
+    
+        c.elapsed = time.Since(start)
+    
+        return string(buffer), nil
+
     } else {
         conn, err = dialer.Dial("tcp", net.JoinHostPort(server, port))
         if err != nil {
             return "", fmt.Errorf("whois: connect to whois server failed: %w", err)
         }
-    }
 
-    defer func() {
-        if closeErr := conn.Close(); closeErr != nil {
-            log.Printf("Error closing connection: %v", closeErr)
+        defer func() {
+            if closeErr := conn.Close(); closeErr != nil {
+                log.Printf("Error closing connection: %v", closeErr)
+            }
+        }()
+    
+        c.elapsed = time.Since(start)
+    
+        _ = conn.SetWriteDeadline(time.Now().Add(c.timeout - c.elapsed))
+        _, err = conn.Write([]byte(domain + "\r\n"))
+        if err != nil {
+            return "", fmt.Errorf("whois: send to whois server failed: %w", err)
         }
-    }()
-
-    c.elapsed = time.Since(start)
-
-    _ = conn.SetWriteDeadline(time.Now().Add(c.timeout - c.elapsed))
-    _, err = conn.Write([]byte(domain + "\r\n"))
-    if err != nil {
-        return "", fmt.Errorf("whois: send to whois server failed: %w", err)
+    
+        c.elapsed = time.Since(start)
+    
+        _ = conn.SetReadDeadline(time.Now().Add(c.timeout - c.elapsed))
+        buffer, err := io.ReadAll(conn)
+        if err != nil {
+            return "", fmt.Errorf("whois: read from whois server failed: %w", err)
+        }
+    
+        c.elapsed = time.Since(start)
+    
+        return string(buffer), nil
     }
-
-    c.elapsed = time.Since(start)
-
-    _ = conn.SetReadDeadline(time.Now().Add(c.timeout - c.elapsed))
-    buffer, err := io.ReadAll(conn)
-    if err != nil {
-        return "", fmt.Errorf("whois: read from whois server failed: %w", err)
-    }
-
-    c.elapsed = time.Since(start)
 
     return string(buffer), nil
 }
 
-
 //result, err := c.Whois("example.com", "http://user:password@proxy.example.com:8080")
-//if err != nil {
-//    // Handle error
-//}
+
 
  
  // getExtension returns extension of domain
