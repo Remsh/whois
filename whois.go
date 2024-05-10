@@ -39,41 +39,6 @@
 	 disableReferral bool
  }
 
-
-// type deadlineConn struct {
-//     net.Conn
-//     readDeadline  time.Time
-//     writeDeadline time.Time
-// }
-
-// func (c *deadlineConn) Read(b []byte) (int, error) {
-//     if !c.readDeadline.IsZero() {
-//         if err := c.Conn.SetReadDeadline(c.readDeadline); err != nil {
-//             return 0, err
-//         }
-//     }
-//     return c.Conn.Read(b)
-// }
-
-// func (c *deadlineConn) Write(b []byte) (int, error) {
-//     if !c.writeDeadline.IsZero() {
-//         if err := c.Conn.SetWriteDeadline(c.writeDeadline); err != nil {
-//             return 0, err
-//         }
-//     }
-//     return c.Conn.Write(b)
-// }
-
-// func (c *deadlineConn) Close() error {
-//     // Perform any necessary cleanup operations
-//     // Close the underlying connection
-//     if c.Conn != nil {
-//         return c.Conn.Close()
-//     }
-//     return nil
-// }
-
-
  
  // Version returns package version
  func Version() string {
@@ -233,7 +198,7 @@ func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error)
         switch proxyURI.Scheme {                                                       
         case "socks5":                                                                 
                 // proxyDialer, err = proxy.SOCKS5("tcp", proxyURL, nil, proxy.Direct)
-                proxyDialer, err = proxy.SOCKS5("tcp", proxyURL, nil, dialer)
+                proxyDialer, err = proxy.SOCKS5("tcp", proxyURI.Host, nil, dialer)
         case "http":                                                          
                 // proxyDialer, err = connectproxy.New(proxyURI, proxy.Direct)
                 proxyDialer, err = connectproxy.New(proxyURI, dialer)      
