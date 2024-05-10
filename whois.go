@@ -7,10 +7,13 @@
 	 "strconv"
 	 "strings"
 	 "time"
+     "log"
  
 	 "golang.org/x/net/proxy"
-	 "github.com/go-httpproxy/httpproxy"
+	//  "github.com/go-httpproxy/httpproxy"
 	 "net/url"
+    //  utls "github.com/refraction-networking/utls"
+     "github.com/magisterquis/connectproxy"
  )
  
  const (
@@ -177,31 +180,53 @@ func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error)
     if server == "porkbun.com/whois" {
         server = "whois.porkbun.com"
     }
-
+   
     var conn net.Conn
+    var err error
+
+    dialer := &net.Dialer{
+        Timeout: c.timeout,
+    }
+
     if proxyURL != "" {
-        proxyURL, err := url.Parse(proxyURL)
-        if err != nil {
-            return "", fmt.Errorf("whois: failed to parse proxy URL: %w", err)
-        }
-        dialer := &net.Dialer{
-            Timeout: c.timeout,
-        }
+        // proxyURL, err := url.Parse(proxyURL)
+        // if err != nil {
+        //     return "", fmt.Errorf("whois: failed to parse proxy URL: %w", err)
+        // }
+
+        // conn, err = dialer.Dial("tcp", net.JoinHostPort(server, port))
+        // if err != nil {
+        //     return "", fmt.Errorf("whois: connect to whois server failed: %w", err)
+        // }
+        // conn = &httpproxy.ConnectProxy{
+        //     Conn:   conn,
+        //     Proxy:  proxyURL,
+        //     Target: net.JoinHostPort(server, port),
+        // }
+        
+        proxyURI, _ := url.Parse(proxyURL)
+    
+        switch proxyURI.Scheme {                                                       
+        case "socks5":                                                                 
+                proxyDialer, err = proxy.SOCKS5("tcp", proxyURL, nil, proxy.Direct)
+        case "http":                                                          
+                proxyDialer, err = connectproxy.New(proxyURI, proxy.Direct)            
+        }    
+        conn, err = proxyDialer.Dial("tcp", addr)
+
+    } else {
         conn, err = dialer.Dial("tcp", net.JoinHostPort(server, port))
         if err != nil {
             return "", fmt.Errorf("whois: connect to whois server failed: %w", err)
         }
-        conn = &httpproxy.ConnectProxy{
-            Conn:   conn,
-            Proxy:  proxyURL,
-            Target: net.JoinHostPort(server, port),
-        }
-    } else {
-        if err != nil {
-            return "", fmt.Errorf("whois: connect to whois server failed: %w", err)
-        }
     }
-    defer conn.Close()
+
+    defer func() {
+        if closeErr := conn.Close(); closeErr != nil {
+            log.Printf("Error closing connection: %v", closeErr)
+        }
+    }()
+
     c.elapsed = time.Since(start)
 
     _ = conn.SetWriteDeadline(time.Now().Add(c.timeout - c.elapsed))
