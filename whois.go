@@ -159,6 +159,25 @@ func (c *Client) Whois(domain string, proxyURL string, servers ...string) (resul
     return
 }
 
+// func getProxyDialer(proxyURL string) (proxy.Dialer, error) {
+//     if proxyURL == "" {
+//         return proxy.Direct, nil
+//     }
+
+//     proxyURL, err := url.Parse(proxyURL)
+//     if err != nil {
+//         return nil, fmt.Errorf("failed to parse proxy URL: %w", err)
+//     }
+
+//     proxyDialer, err := proxy.SOCKS5("tcp", proxyURL.Host, nil, proxy.Direct)
+//     if err != nil {
+//         return nil, fmt.Errorf("failed to create proxy dialer: %w", err)
+//     }
+
+//     return proxyDialer, nil
+// }
+
+
 func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error) {
     c.elapsed = 0
     start := time.Now()
@@ -183,6 +202,7 @@ func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error)
    
     var conn net.Conn
     var err error
+    var proxyDialer proxy.Dialer
 
     dialer := &net.Dialer{
         Timeout: c.timeout,
@@ -208,11 +228,13 @@ func (c *Client) rawQuery(domain, server, port, proxyURL string) (string, error)
     
         switch proxyURI.Scheme {                                                       
         case "socks5":                                                                 
-                proxyDialer, err = proxy.SOCKS5("tcp", proxyURL, nil, proxy.Direct)
+                // proxyDialer, err = proxy.SOCKS5("tcp", proxyURL, nil, proxy.Direct)
+                proxyDialer, err = proxy.SOCKS5("tcp", proxyURL, nil, dialer)
         case "http":                                                          
-                proxyDialer, err = connectproxy.New(proxyURI, proxy.Direct)            
+                // proxyDialer, err = connectproxy.New(proxyURI, proxy.Direct)
+                proxyDialer, err = connectproxy.New(proxyURI, dialer)      
         }    
-        conn, err = proxyDialer.Dial("tcp", addr)
+        conn, err = proxyDialer.Dial("tcp", net.JoinHostPort(server, port))
 
     } else {
         conn, err = dialer.Dial("tcp", net.JoinHostPort(server, port))
